@@ -44,7 +44,7 @@ class PetriDish:
         self.canvas.pack()
 
         current_x = int(hex_width * 1.5)
-        current_y = int(hex_size * 2.5)\
+        current_y = int(hex_size * 2.5)
 
         #draw da hexes
         for i, hex_row in enumerate(self.hex_grid):
