@@ -1,7 +1,7 @@
-#file name to avoid any accidental import conflicts
+#upi file name to avoid any accidental import conflicts
 import random
 
-def combine_genome(genome1, genome2, mu1=0.02, mu2=0.02):
+def combine_genome(genome1, genome2, mu1=0.01, mu2=0.01):
     """Combines two (equally sized) lists of [0,1) floats."""
     #largely reusing Matthew's code here 
     assert len(genome1) == len(genome2), 'Oops, genomes of different length'
