@@ -129,8 +129,6 @@ def reproduce(cell, hex):
     cell.energy = cell.energy/2
 
     NiceCell(genome, hex, cell.energy/2)
-    
-
     return
 
 
