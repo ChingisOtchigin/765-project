@@ -12,6 +12,7 @@ class Hex:
         self.color = '#D5D8D3'
     
     def draw(self, x, y, size, canvas): 
+
         dx = (3**0.5 * size) // 2
 
         p1 = (x + dx    , y + size // 2 )
@@ -36,7 +37,17 @@ class Hex:
     
     def unpair_cell(self):
         self.cell = None
-        self.update_color('#D5D8D3')
+        self.updateConcentration(0)
+
+    def updateConcentration(self, concentration):
+        self.contents = concentration
+
+        if(self.cell == None):
+            rgb = [int(255 * (1 - self.contents)) for i in range(0,3)]
+            color =('#' + ''.join([format(x, '02x') for x in rgb]))
+            self.update_color(new_color=color)
+
+
 
 class Cell:
     def __init__(self, color='red', hex_pair = None):
@@ -72,7 +83,7 @@ class PetriDish:
                 self[0][0].neighbors = [self[0][1], self[1][0]]
                 self[0][-1].neighbors = [self[0][-2], self[1][-2], self[1][-1]]
                 for j in range(1, grid_width - 1):
-                    self[0][j].neighbors = [self[0][j - 1], self[1][j-1], self[1][j], self[0][j + 1]]
+                    self[0][j].neighbors = [self[0][j - 1], self[1][j], self[1][j+1], self[0][j + 1]]
             elif index == grid_height - 1:
                 if index % 2: #outies
                     self[-1][0].neighbors = [self[-1][1], self[-2][0]]
