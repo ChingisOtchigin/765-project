@@ -83,7 +83,7 @@ class PetriDish:
                 self[0][0].neighbors = [self[0][1], self[1][0]]
                 self[0][-1].neighbors = [self[0][-2], self[1][-2], self[1][-1]]
                 for j in range(1, grid_width - 1):
-                    self[0][j].neighbors = [self[0][j - 1], self[1][j], self[1][j+1], self[0][j + 1]]
+                    self[0][j].neighbors = [self[0][j - 1], self[1][j-1], self[1][j], self[0][j + 1]]
             elif index == grid_height - 1:
                 if index % 2: #outies
                     self[-1][0].neighbors = [self[-1][1], self[-2][0]]
