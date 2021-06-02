@@ -2,7 +2,7 @@ from tkinter import *
 import random
 
 class Hex:
-    def __init__(self, row, col, cell=None, contents=None):
+    def __init__(self, row, col, cell=None, contents=0.0):
         self.row = row
         self.col = col
         self.cell = cell
@@ -36,7 +36,7 @@ class Hex:
     
     def unpair_cell(self):
         self.cell = None
-        self.updateConcentration(0)
+        self.updateConcentration(self.contents)
 
     def updateConcentration(self, concentration, color=[255,255,255]):
         self.contents = concentration
@@ -68,7 +68,16 @@ class RussianFlagCell(Cell):
         self.genome = genome
         self.rgb = [int(255 * gene) for gene in genome]
         self.change_color('#' + ''.join([format(x, '02x') for x in self.rgb]))
-        self.energy = energy    
+        self.energy = energy
+
+class SelfishCell(Cell):
+    def __init__(self, hex_pair, genome=[0]):
+        Cell.__init__(self, hex_pair=hex_pair)
+        self.genome = genome
+        self.rgb = [int(255 * genome[0]), int(255 * (1 - genome[0])), 0]
+        self.change_color('#' + ''.join([format(x, '02x') for x in self.rgb]))
+        self.age = 0
+        self.food_supply = 0
 
 class PetriDish:
     def __init__(self, grid_width, grid_height):
