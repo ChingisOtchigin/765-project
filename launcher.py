@@ -36,6 +36,10 @@ def run_russian_flag_evo(tk, pd, time_step = 0.5):
         tk.after(2, lambda: update_cell(row, col))
 
     tk.after(2, lambda: update_cell(0,0))
+
+
+
+
     
 
 ######################################
@@ -48,8 +52,7 @@ tk = pd.draw(hex_size=15)
 #########  CODE GOES HERE  ###########
 ######################################
 
-run_russian_flag_evo(tk, pd)
-
+#run_russian_flag_evo(tk, pd)
 
 
 

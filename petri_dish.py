@@ -38,11 +38,11 @@ class Hex:
         self.cell = None
         self.updateConcentration(0)
 
-    def updateConcentration(self, concentration):
+    def updateConcentration(self, concentration, color=[255,255,255]):
         self.contents = concentration
 
         if(self.cell == None):
-            rgb = [int(255 * (1 - self.contents)) for i in range(0,3)]
+            rgb = [int(entry * (1 - self.contents)) for entry in color]
             color =('#' + ''.join([format(x, '02x') for x in rgb]))
             self.update_color(new_color=color)
 
