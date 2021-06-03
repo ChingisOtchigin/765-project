@@ -62,14 +62,16 @@ def propagate_food_sources(fs, pd):
             content_sum = sum(mask[i][j] for mask in masks)
             pd[i][j].updateConcentration(min(1, content_sum), food_color)
 
-def run_competitive_behaviour_evo(tk, pd):
+def run_competitive_behaviour_evo(tk, pd, genome=None, max_age=10, reproduction_probability=0.9):
     #Cool Combinations to try: Solid 0.85 with age 5, 0.9 with age 7, 0.8 with age 3
     #
     food_sources = sum([[(0,i), (10,i)] for i in [0,20]], [])
     propagate_food_sources(food_sources, pd)
 
-    #LIVING_CELLS = [SelfishCell(pd[i][1]) for i in range(pd.grid_height)]
-    LIVING_CELLS = [SelfishCell(pd[i][1], [random.random()]) for i in range(pd.grid_height)]
+    if genome:
+        LIVING_CELLS = [SelfishCell(pd[i][1], genome) for i in range(pd.grid_height)]
+    else:
+        LIVING_CELLS = [SelfishCell(pd[i][1], [random.random()]) for i in range(pd.grid_height)]
 
 
     def update_cell(i):
@@ -94,19 +96,21 @@ def run_competitive_behaviour_evo(tk, pd):
                 need_to_be_filled.append(n)
             
 
-        if cell.food_supply < 0 or not has_buddies or cell.age == 10:
+        if cell.food_supply < 0 or not has_buddies or cell.age == max_age:
             LIVING_CELLS.remove(cell)
             cell.hex.unpair_cell()
             tk.after(2, lambda: update_cell(i + 1))
             return
 
         for n in need_to_be_filled:
-            if random.random() < 0.9: #The reproduction chance matters a ridiculous amount       
+            if random.random() < reproduction_probability: #The reproduction chance matters a ridiculous amount       
                 possible_parents = sorted([parent.cell for parent in n.neighbors if parent.cell], key=lambda x: x.food_supply, reverse=True)
                 if len(possible_parents) > 1:
                     p1, p2 = possible_parents[:2]
-                    #LIVING_CELLS.append(SelfishCell(n))
-                    LIVING_CELLS.append(SelfishCell(n, combine_genome(p1.genome, p2.genome)))
+                    if genome:
+                        LIVING_CELLS.append(SelfishCell(n, genome))
+                    else:
+                        LIVING_CELLS.append(SelfishCell(n, combine_genome(p1.genome, p2.genome)))
 
 
         tk.after(2, lambda: update_cell(i + 1))
@@ -128,7 +132,14 @@ tk = pd.draw(hex_size=20) #usually 15
 ######################################
 
 #run_russian_flag_evo(tk, pd)
-run_competitive_behaviour_evo(tk, pd)
+random.seed(1234)
+#run_competitive_behaviour_evo(tk, pd,  genome=[0], max_age=5)
+#run_competitive_behaviour_evo(tk, pd)
+#run_competitive_behaviour_evo(tk, pd, max_age=5)
+run_competitive_behaviour_evo(tk, pd,  genome=[0.99], max_age=3)
+#run_competitive_behaviour_evo(tk, pd, reproduction_probability=0.3)
+
+
 
 # print(f'Neighbors for (0,2):')
 # for n in pd[0][2].neighbors:
