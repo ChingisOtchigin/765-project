@@ -7,18 +7,19 @@ import numpy as np
 startingEnergy = 1
 hunger = 0.2
 
-choiceSharingThreshold = 1 #if probability is higher, cell takes the action
-choiceReproductionThreshold = 0.2
-shareAmount = 0.1
+choiceSharingThreshold = 0.5 #if probability is higher, cell takes the action
+choiceReproductionThreshold = 0.5
+shareAmount = 0.5
+neighbourHungerFactor = 1
 
-pd = PetriDish(30, 15)
+pd = PetriDish(30, 30)
 tk = pd.draw(hex_size=15)
 
 numFoodSensors = 7
 numCellSensors = 6
 numActions = 2 #reproduce or share
 
-numGenomeInputs = (numCellSensors*2 + numFoodSensors*6) #cell sensors only require 2 genes e.g. there is or is not a cell
+numGenomeInputs = (numCellSensors*2 + numFoodSensors*6)*2 #cell sensors only require 2 genes e.g. there is or is not a cell
 
 randomGenome = [random.random() for _ in range(numGenomeInputs)]
 bestGenomes = np.array([randomGenome, randomGenome, randomGenome])
@@ -41,24 +42,28 @@ class NiceCell(Cell):
                 reproducingProbs[i] += np.interp(neighbourConcentrations[(c + i)%6], x, y)
 
             for n in range(0, 6):
-                x = [0,1]
+                x = [-1,1]
                 y = [self.genome[(7*6) + n*2], self.genome[(7*6) + n*2 + 1] ]
                 reproducingProbs[i] += np.interp(neighbourCells[((n + i)%6)], x, y)
 
         return reproducingProbs
 
-    # def getProbabilitiesOfSharing(self, neighbourConcentrations, neighbourCells):
-    #     indexOffset = (numFoodSensors+numCellSensors)
-    #     sharingProbs = np.zeros(6)
+    def getProbabilitiesOfSharing(self, neighbourConcentrations, neighbourCells):
+        indexOffset = (numCellSensors*2 + numFoodSensors*6)
+        sharingProbs = np.zeros(6)
 
-    #     for i in range(0,6):
-    #         for c in range(0, neighbourConcentrations.size):
-    #             sharingProbs[i] += self.genome[c + indexOffset]*neighbourConcentrations[(c + i)%6]
-    #         for n in range(0, neighbourCells.size):
-    #             sharingProbs[i] += self.genome[n + indexOffset + numFoodSensors]*neighbourCells[((n + i)%6)]
-    #             #print("checking genome: " , n + indexOffset + numFoodSensors)
+        for i in range(0,6):
+            for c in range(0, 7):
+                x = [0, self.genome[c*6+4 + indexOffset], self.genome[c*6+5 + indexOffset],1]
+                y = [self.genome[c*6 + indexOffset], self.genome[c*6+1 + indexOffset], self.genome[c*6+2 + indexOffset], self.genome[c*6+3 + indexOffset]]
+                sharingProbs[i] += np.interp(neighbourConcentrations[(c + i)%6], x, y)
 
-    #     return sharingProbs
+            for n in range(0, 6):
+                x = [0,1]
+                y = [self.genome[(7*6) + n*2 + indexOffset], self.genome[(7*6) + n*2 + 1 + indexOffset] ]
+                sharingProbs[i] += np.interp(neighbourCells[((n + i)%6)], x, y)
+
+        return sharingProbs
 
 def getIndexOfNeighbour(center, neighbour):
 
@@ -90,7 +95,23 @@ def getIndexOfNeighbour(center, neighbour):
                 return 4
             else:
                 return 5
-                
+
+
+def mutateGenome(genome, mu = 0.05):
+    outGenome = []
+
+    for i in range(0, len(genome)):
+        mutation = mu*random.randint(-1,1)
+        if(genome[i] + mutation < -1):
+            outGenome.append(-1)
+        elif(genome[i] + mutation > 1):
+            outGenome.append(1)
+        else:
+            outGenome.append(genome[i] + mutation)
+    
+    return outGenome
+
+
 
 def getLivingNeighbours(hex):
 
@@ -131,6 +152,7 @@ def share(cell, hex, percent):
     
     #print(cell.hex_pair.row, ", ", cell.hex_pair.col, ", share: ", percent)
     shareAmount = cell.energy*percent
+    shareAmount = min(1 - hex.contents, shareAmount)
     cell.energy = cell.energy - shareAmount
 
     Hex.updateConcentration(hex, (hex.contents + shareAmount))
@@ -140,7 +162,7 @@ def share(cell, hex, percent):
 def reproduce(cell, hex):
     #print(cell.hex_pair.row, ", ", cell.hex_pair.col, ", reproduce: ", hex)
 
-    genome = combine_genome(cell.genome, cell.genome)
+    genome = mutateGenome(cell.genome)
     cell.energy = cell.energy/2
 
     cell = NiceCell(genome, hex, cell.energy/2)
@@ -161,7 +183,10 @@ def updateBestGenomes(genome):
 
 def cellTurn(cell):
     eat(cell)
-    cell.energy = cell.energy - hunger
+    living = getLivingNeighbours(cell.hex_pair)
+    adjustedHunger = hunger*(neighbourHungerFactor**sum(living))
+
+    cell.energy = cell.energy - adjustedHunger
 
     if(cell.energy <= 0):
 
@@ -169,6 +194,7 @@ def cellTurn(cell):
         hex = cell.hex
         hex.unpair_cell()
         updateBestGenomes(cell.genome)
+        Hex.updateConcentration(hex, 0)
 
         return
         
@@ -176,34 +202,39 @@ def cellTurn(cell):
     conc = getConcentrationNeighbours(cell.hex_pair)
     living = getLivingNeighbours(cell.hex_pair)
 
-    #print("conc: ", conc)
-    #print("living: ", living)
-
-    if(sum(living) < 1):
-        cell.hex.unpair_cell()
-        updateBestGenomes(cell.genome)
-
-    # probsShare = NiceCell.getProbabilitiesOfSharing(cell,conc,living)
-    # maxShare = np.argmax(probsShare)
+    probsShare = NiceCell.getProbabilitiesOfSharing(cell,conc,living)
+    maxShare = np.argmax(probsShare)
 
     probsReproduce = NiceCell.getProbabilitiesOfReproducing(cell,conc,living)
     maxReproduce = np.argmax(probsReproduce)
 
-    # if(probsShare[maxShare] > choiceSharingThreshold):
-    #     shareHex = getNeighborAtIndex(cell.hex_pair, maxShare)
-    #     share(cell, shareHex, shareAmount)
+    if(probsShare[maxShare] > choiceSharingThreshold):
+        shareHex = getNeighborAtIndex(cell.hex_pair, maxShare)
+        if(shareHex!= None):
+            share(cell, shareHex, shareAmount)
 
     if(probsReproduce[maxReproduce] > choiceReproductionThreshold):
         reprodHex = getNeighborAtIndex(cell.hex_pair, maxReproduce)
-        reproduce(cell, reprodHex)
+        if(reprodHex!= None):
+            reproduce(cell, reprodHex)
 
     return
 
 def initialiseConcentrations(pd):
+
+    radius = 30
+    row = random.randint(0, pd.grid_height-1)
+    col = random.randint(0, pd.grid_width-1)
     
     for i, hex_row in enumerate(pd.hex_grid):
         for h in hex_row:
-            Hex.updateConcentration(self = h, concentration = i/len(pd.hex_grid))
+            _concentration = 0
+            dif = ((h.row - row)**2 + (h.col- col)**2)**(0.5)
+
+            if(dif <= radius):
+                _concentration = (float)(radius - dif)/radius
+
+            Hex.updateConcentration(self = h, concentration = _concentration)
 
 def getListOfLivingCells(pd):
     livingCellsList = []
@@ -215,8 +246,7 @@ def getListOfLivingCells(pd):
 
     return livingCellsList
             
-def initialiseGeneration():
-    genomes = breedFromBest(6)
+def initialiseGeneration(genomes):
     initialiseConcentrations(pd)
 
     for i in range(0, genomes.shape[0]):
@@ -228,11 +258,13 @@ def nice_cell_evo(tk, pd, time_step = 0.5):
     #Initialise
     initialiseConcentrations(pd)
     
-    for i in range(0, 6):
-        cell = NiceCell([random.uniform(-1.0, 1.0) for _ in range(numGenomeInputs)], pd.hex_grid[int(pd.grid_height/3)][int(pd.grid_width/2) + i], startingEnergy)
-        print("initial genomes: ")
-        print(cell.genome)
-        
+    initialGenomes = np.empty((6, numGenomeInputs))
+    for i in range(0, initialGenomes.shape[0]):
+        initialGenomes[i] = [random.uniform(-1.0, 1.0) for _ in range(numGenomeInputs)]
+
+    print("Initial genomes: ", initialGenomes)
+    initialiseGeneration(initialGenomes)
+
     #Main loop here
     def update_cells():
         livingCellsList = getListOfLivingCells(pd)
@@ -243,7 +275,8 @@ def nice_cell_evo(tk, pd, time_step = 0.5):
         if(len(livingCellsList) > 0):
             tk.after(10, lambda: update_cells())
         else:
-            initialiseGeneration()
+            genomes = breedFromBest(6)
+            initialiseGeneration(genomes)
             tk.after(10, lambda: update_cells())
 
     tk.after(2, lambda: update_cells())
@@ -254,8 +287,7 @@ def breedFromBest(outputSize):
 
     for i in range(0, outputSize):
         random1 = randint(0, (bestGenomes.shape[0] - 1))
-        random2 = randint(0, (bestGenomes.shape[0] - 1))
-        out[i] = combine_genome(bestGenomes[random1], bestGenomes[random2])
+        out[i] = mutateGenome(bestGenomes[random1])
     return out
 
 
